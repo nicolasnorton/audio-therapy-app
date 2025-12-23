@@ -1,2 +1,7 @@
-#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
-#include "Generated.xcconfig"
+// Use conditional includes so missing files don't cause immediate build failures.
+// CocoaPods defines PODS_ROOT; this makes the include path stable regardless of file location.
+#include? "$(PODS_ROOT)/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+// Flutter generates this file during `flutter pub get`.
+// If it's missing, run: flutter clean && flutter pub get, then (in ios/) pod install
+#include? "Generated.xcconfig"
+

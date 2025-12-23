@@ -1,9 +1,9 @@
-import 'dart:io' show File;
+import 'dart:io' show File, Platform;
 import 'dart:math';
 import 'dart:typed_data';
 
-// Conditional import for web download
-import 'dart:html' as html if (dart.library.io) '';
+// Web download using universal_html (works on Flutter web)
+import 'package:universal_html/html.dart' as universal_html;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -99,6 +99,7 @@ class _TherapyHomePageState extends State<TherapyHomePage> {
 
   bool isGenerating = false;
   bool isPreviewing = false;
+  bool isSettingsExpanded = false;
 
   final List<double> brainwaveValues = [2.5, 4.0, 6.0, 10.0, 18.0, 40.0];
   final List<String> brainwaveLabels = [
@@ -153,65 +154,125 @@ class _TherapyHomePageState extends State<TherapyHomePage> {
       setState(() => isPreviewing = false);
       return;
     }
+
     setState(() => isPreviewing = true);
-    final wav = AudioGenerator.generate(
-      durationSec: 15,
-      beatFreq: beatFreq,
-      carrierFreq: carrierFreq,
-      toneType: toneType,
-      ambientType: ambientType,
-      toneVolume: toneVolume,
-      ambientVolume: ambientVolume,
-    );
-    await _player.setAudioSource(InMemoryAudioSource(wav));
-    await _player.play();
-    _player.playerStateStream.listen((s) => !s.playing && mounted ? setState(() => isPreviewing = false) : null);
+
+    try {
+      final wav = AudioGenerator.generate(
+        durationSec: 15,
+        beatFreq: beatFreq,
+        carrierFreq: carrierFreq,
+        toneType: toneType,
+        ambientType: ambientType,
+        toneVolume: toneVolume,
+        ambientVolume: ambientVolume,
+      );
+      await _player.setAudioSource(InMemoryAudioSource(wav));
+      await _player.play();
+    } catch (e) {
+      _showError('Preview failed — try again');
+      debugPrint('Preview error: $e');
+    } finally {
+      if (mounted) setState(() => isPreviewing = false);
+    }
   }
 
   Future<void> _generateAndSave() async {
-    setState(() => isGenerating = true);
-    final wav = AudioGenerator.generate(
-      durationSec: durationMin * 60,
-      beatFreq: beatFreq,
-      carrierFreq: carrierFreq,
-      toneType: toneType,
-      ambientType: ambientType,
-      toneVolume: toneVolume,
-      ambientVolume: ambientVolume,
-    );
-    final name = 'Therapy_${toneType[0].toUpperCase()}${toneType.substring(1)}_${beatFreq.toInt()}Hz_${ambientType}_${durationMin.round()}min.wav';
+    if (isGenerating) return;
 
-    if (kIsWeb) {
-      final dataUri = Uri.dataFromBytes(wav, mimeType: 'audio/wav').toString();
-      final anchor = html.AnchorElement(href: dataUri)
-        ..setAttribute('download', name)
-        ..click();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download started!')));
-    } else {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$name');
-      await file.writeAsBytes(wav);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Library!')));
+    setState(() => isGenerating = true);
+
+    try {
+      final totalSec = durationMin * 60;
+      final name = 'Therapy_${toneType[0].toUpperCase()}${toneType.substring(1)}_${beatFreq.toInt()}Hz_${ambientType}_${durationMin.round()}min.wav';
+
+      Uint8List wav;
+
+      if (totalSec <= 300) {
+        wav = AudioGenerator.generate(
+          durationSec: totalSec,
+          beatFreq: beatFreq,
+          carrierFreq: carrierFreq,
+          toneType: toneType,
+          ambientType: ambientType,
+          toneVolume: toneVolume,
+          ambientVolume: ambientVolume,
+        );
+      } else {
+        wav = AudioGenerator.generateChunked(
+          totalSec: totalSec,
+          chunkSec: 30.0,
+          beatFreq: beatFreq,
+          carrierFreq: carrierFreq,
+          toneType: toneType,
+          ambientType: ambientType,
+          toneVolume: toneVolume,
+          ambientVolume: ambientVolume,
+        );
+      }
+
+      if (kIsWeb) {
+        // Using universal_html — works on Flutter web
+        final blob = universal_html.Blob([wav]);
+        final url = universal_html.Url.createObjectUrlFromBlob(blob);
+        final anchor = universal_html.AnchorElement(href: url)
+          ..setAttribute('download', name)
+          ..click();
+        universal_html.Url.revokeObjectUrl(url);
+        _showSuccess('Download started!');
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$name');
+        await file.writeAsBytes(wav);
+        _showSuccess('Saved to Library!');
+      }
+    } catch (e, stackTrace) {
+      String errorMessage = 'Generation failed.';
+      if (kIsWeb) errorMessage = 'Download failed — try again.';
+      else if (Platform.isIOS) errorMessage = 'Save failed — try shorter duration.';
+      else if (Platform.isAndroid) errorMessage = 'Save failed — check storage.';
+
+      debugPrint('Generation error: $e\n$stackTrace');
+      _showError(errorMessage);
+    } finally {
+      if (mounted) setState(() => isGenerating = false);
     }
-    setState(() => isGenerating = false);
+  }
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.teal),
+    );
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        action: SnackBarAction(label: 'OK', onPressed: () {}),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Create New Track'), centerTitle: true),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Quick Presets', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              const Text('Quick Presets', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  childAspectRatio: 1.3,
+                  childAspectRatio: 1.4,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                 ),
@@ -228,11 +289,11 @@ class _TherapyHomePageState extends State<TherapyHomePage> {
                         boxShadow: [BoxShadow(color: p.color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))],
                       ),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(p.icon, size: 32, color: Colors.white),
-                        const SizedBox(height: 8),
+                        Icon(p.icon, size: 20, color: Colors.white),
+                        const SizedBox(height: 6),
                         Text(
                           p.title,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                           textAlign: TextAlign.center,
                         ),
                       ]),
@@ -241,83 +302,98 @@ class _TherapyHomePageState extends State<TherapyHomePage> {
                 },
               ),
 
+              const SizedBox(height: 24),
+
+              Card(
+                color: const Color(0xFF1A0033),
+                child: ExpansionTile(
+                  initiallyExpanded: false,
+                  onExpansionChanged: (expanded) => setState(() => isSettingsExpanded = expanded),
+                  title: const Text('Custom Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  trailing: Icon(isSettingsExpanded ? Icons.expand_less : Icons.expand_more),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Duration (minutes) – Max 12', style: TextStyle(fontSize: 14)),
+                          Slider(min: 1, max: 12, divisions: 11, label: durationMin.round().toString(), value: durationMin, onChanged: (v) => setState(() => durationMin = v)),
+
+                          const SizedBox(height: 16),
+                          const Text('Brainwave', style: TextStyle(fontSize: 14)),
+                          DropdownButton<double>(
+                            isExpanded: true,
+                            value: beatFreq,
+                            items: List.generate(brainwaveValues.length, (i) => DropdownMenuItem(value: brainwaveValues[i], child: Text(brainwaveLabels[i], style: const TextStyle(fontSize: 14)))),
+                            onChanged: (v) => setState(() => beatFreq = v!),
+                          ),
+
+                          const SizedBox(height: 16),
+                          const Text('Solfeggio', style: TextStyle(fontSize: 14)),
+                          DropdownButton<double>(
+                            isExpanded: true,
+                            value: carrierFreq,
+                            items: List.generate(solfeggioValues.length, (i) => DropdownMenuItem(value: solfeggioValues[i], child: Text(solfeggioLabels[i], style: const TextStyle(fontSize: 14)))),
+                            onChanged: (v) => setState(() => carrierFreq = v!),
+                          ),
+
+                          const SizedBox(height: 16),
+                          const Text('Tone Type', style: TextStyle(fontSize: 14)),
+                          SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(value: 'binaural', label: Text('Binaural')),
+                              ButtonSegment(value: 'isochronic', label: Text('Isochronic')),
+                              ButtonSegment(value: 'hybrid', label: Text('Hybrid')),
+                            ],
+                            selected: {toneType},
+                            onSelectionChanged: (s) => setState(() => toneType = s.first),
+                          ),
+
+                          const SizedBox(height: 16),
+                          const Text('Ambient', style: TextStyle(fontSize: 14)),
+                          DropdownButton<String>(
+                            isExpanded: true,
+                            value: ambientType,
+                            items: const [
+                              DropdownMenuItem(value: 'none', child: Text('None')),
+                              DropdownMenuItem(value: 'pink', child: Text('Pink Noise')),
+                              DropdownMenuItem(value: 'rain', child: Text('Rain')),
+                              DropdownMenuItem(value: 'ocean', child: Text('Ocean')),
+                              DropdownMenuItem(value: 'forest', child: Text('Forest')),
+                            ],
+                            onChanged: (v) => setState(() => ambientType = v!),
+                          ),
+
+                          const SizedBox(height: 20),
+                          const Text('Tone Volume', style: TextStyle(fontSize: 14)),
+                          Slider(min: 0, max: 0.5, value: toneVolume, onChanged: (v) => setState(() => toneVolume = v)),
+                          const Text('Ambient Volume', style: TextStyle(fontSize: 14)),
+                          Slider(min: 0.5, max: 1.0, value: ambientVolume, onChanged: (v) => setState(() => ambientVolume = v)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 30),
-              const Divider(),
-
-              const Text('Custom Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-
-              const Text('Duration (minutes) – Max 12'),
-              Slider(min: 1, max: 12, divisions: 11, label: durationMin.round().toString(), value: durationMin, onChanged: (v) => setState(() => durationMin = v)),
-
-              const SizedBox(height: 20),
-              const Text('Brainwave'),
-              DropdownButton<double>(
-                isExpanded: true,
-                value: beatFreq,
-                items: List.generate(brainwaveValues.length, (i) => DropdownMenuItem(value: brainwaveValues[i], child: Text(brainwaveLabels[i]))),
-                onChanged: (v) => setState(() => beatFreq = v!),
-              ),
-
-              const SizedBox(height: 20),
-              const Text('Solfeggio'),
-              DropdownButton<double>(
-                isExpanded: true,
-                value: carrierFreq,
-                items: List.generate(solfeggioValues.length, (i) => DropdownMenuItem(value: solfeggioValues[i], child: Text(solfeggioLabels[i]))),
-                onChanged: (v) => setState(() => carrierFreq = v!),
-              ),
-
-              const SizedBox(height: 20),
-              const Text('Tone Type'),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'binaural', label: Text('Binaural')),
-                  ButtonSegment(value: 'isochronic', label: Text('Isochronic')),
-                  ButtonSegment(value: 'hybrid', label: Text('Hybrid')),
-                ],
-                selected: {toneType},
-                onSelectionChanged: (s) => setState(() => toneType = s.first),
-              ),
-
-              const SizedBox(height: 20),
-              const Text('Ambient'),
-              DropdownButton<String>(
-                isExpanded: true,
-                value: ambientType,
-                items: const [
-                  DropdownMenuItem(value: 'none', child: Text('None')),
-                  DropdownMenuItem(value: 'pink', child: Text('Pink Noise')),
-                  DropdownMenuItem(value: 'rain', child: Text('Rain')),
-                  DropdownMenuItem(value: 'ocean', child: Text('Ocean')),
-                  DropdownMenuItem(value: 'forest', child: Text('Forest')),
-                ],
-                onChanged: (v) => setState(() => ambientType = v!),
-              ),
-
-              const SizedBox(height: 30),
-              const Text('Tone Volume'),
-              Slider(min: 0, max: 0.5, value: toneVolume, onChanged: (v) => setState(() => toneVolume = v)),
-              const Text('Ambient Volume'),
-              Slider(min: 0.5, max: 1.0, value: ambientVolume, onChanged: (v) => setState(() => ambientVolume = v)),
-
-              const SizedBox(height: 40),
               Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                 ElevatedButton.icon(
                   onPressed: isGenerating ? null : _preview,
                   icon: Icon(isPreviewing ? Icons.stop : Icons.play_arrow),
-                  label: Text(isPreviewing ? 'Stop' : 'Preview 15s'),
+                  label: Text(isPreviewing ? 'Stop' : 'Preview 15s', style: const TextStyle(fontSize: 14)),
                 ),
                 ElevatedButton.icon(
                   onPressed: isGenerating ? null : _generateAndSave,
                   icon: isGenerating ? const CircularProgressIndicator() : const Icon(Icons.save),
-                  label: const Text('Generate & Save'),
+                  label: const Text('Generate & Save', style: TextStyle(fontSize: 14)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
                 ),
               ]),
 
-              const SizedBox(height: 40),
-              const Center(child: Text('Headphones recommended', style: TextStyle(color: Colors.white70))),
+              const SizedBox(height: 30),
+              const Center(child: Text('Headphones recommended', style: TextStyle(color: Colors.white70, fontSize: 13))),
             ],
           ),
         ),
@@ -407,6 +483,64 @@ class AudioGenerator {
     double toneVolume = 0.25,
     double ambientVolume = 0.75,
   }) {
+    return _generateFull(
+      durationSec: durationSec,
+      beatFreq: beatFreq,
+      carrierFreq: carrierFreq,
+      toneType: toneType,
+      ambientType: ambientType,
+      toneVolume: toneVolume,
+      ambientVolume: ambientVolume,
+    );
+  }
+
+  static Uint8List generateChunked({
+    required double totalSec,
+    required double chunkSec,
+    required double beatFreq,
+    required double carrierFreq,
+    required String toneType,
+    required String ambientType,
+    required double toneVolume,
+    required double ambientVolume,
+  }) {
+    final chunks = (totalSec / chunkSec).ceil();
+    final bytes = BytesBuilder();
+
+    for (int i = 0; i < chunks; i++) {
+      final start = i * chunkSec;
+      final end = (i + 1) * chunkSec;
+      final chunkDuration = (end > totalSec ? totalSec - start : chunkSec);
+
+      final chunk = _generateFull(
+        durationSec: chunkDuration,
+        beatFreq: beatFreq,
+        carrierFreq: carrierFreq,
+        toneType: toneType,
+        ambientType: ambientType,
+        toneVolume: toneVolume,
+        ambientVolume: ambientVolume,
+      );
+
+      if (i == 0) {
+        bytes.add(chunk);
+      } else {
+        bytes.add(chunk.sublist(44)); // Skip header
+      }
+    }
+
+    return bytes.toBytes();
+  }
+
+  static Uint8List _generateFull({
+    required double durationSec,
+    required double beatFreq,
+    required double carrierFreq,
+    required String toneType,
+    required String ambientType,
+    required double toneVolume,
+    required double ambientVolume,
+  }) {
     final samples = (durationSec * sampleRate).floor();
     final t = List.generate(samples, (i) => i / sampleRate);
     final baseCarrier = carrierFreq > 0 ? carrierFreq : 240.0;
@@ -444,15 +578,15 @@ class AudioGenerator {
 
     final out = Float32List(samples * 2);
     for (int i = 0; i < samples; i++) {
-      out[i * 2] = mainL[i] + ambient[i];
-      out[i * 2 + 1] = mainR[i] + ambient[i];
+      out[i * 2] = (mainL[i] + ambient[i]).clamp(-1.0, 1.0);
+      out[i * 2 + 1] = (mainR[i] + ambient[i]).clamp(-1.0, 1.0);
     }
     return _encodeWav(out);
   }
 
   static List<double> _generateAmbient(int samples, List<double> t, String type) {
     final rnd = Random();
-    final noise = List<double>.filled(samples, 0);
+    final noise = List<double>.filled(samples, 0.0);
 
     if (type == 'pink') {
       double b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
