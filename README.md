@@ -1,40 +1,30 @@
-# Audio Therapy App 🎧
+# Audio Therapy App
 
-A beautiful, personalized sound therapy app built with Flutter.
+A personalized sound therapy Flutter app that generates binaural beats, isochronic tones, hybrid audio, and ambient sounds (pink noise, rain, ocean, forest) combined with solfeggio frequencies.
 
-Generate custom audio tracks combining:
-- Binaural beats, isochronic tones, or hybrid
-- Solfeggio frequencies
-- Ambient sounds (pink noise, rain, ocean, forest)
-- 6 powerful one-tap presets
-
-Save tracks to your Library and play them offline anytime.
-
-**Perfect for relaxation, focus, meditation, sleep, and healing.**
+Features brainwave entrainment (delta to gamma), quick presets, custom settings, 15-second preview, full track generation, and a library for saved tracks.
 
 ## Features
+- **Brainwave Entrainment**: Delta (2.5 Hz), Theta (4–6 Hz), Alpha (10 Hz), Beta (18 Hz), Gamma (40 Hz)
+- **Solfeggio Frequencies**: 174 Hz to 963 Hz (or none)
+- **Tone Types**: Binaural, Isochronic, Hybrid
+- **Ambient Sounds**: Pink noise, rain, ocean, forest (or none)
+- **Quick Presets**: Deep Sleep, Relaxation, Focus Flow, Anxiety Relief, Healing, Meditation
+- **Generation**: 1–12 minutes (browser limit: 1 min max)
+- **Preview**: 15-second sample playback
+- **Library**: Save, play, delete tracks
+- **Cross-Platform**: iOS, Android, Web (Chrome/Edge/Safari), macOS, Windows
+- **Performance**: Background generation on mobile (no UI freeze), synchronous on web (short tracks only)
 
-- **6 Quick Presets** in a clean 3-column grid (Deep Sleep, Relaxation, Focus Flow, Anxiety Relief, Healing, Meditation)
-- **Collapsible Custom Settings** (starts closed for clean UI)
-- Full controls: duration (up to 12 min), brainwave, solfeggio, tone type, ambient, volumes
-- 15-second preview
-- Generate & Save (download on web, save to device on iOS/Android)
-- Library tab: play or delete saved tracks
-- Fully responsive — fits perfectly on all phone sizes (no scrolling)
-- Dark, calming purple theme
+## Current Status (Dec 23, 2025)
+- **Fully working** on iOS/Android (long tracks with smooth progress)
+- **Stable on web** (preview + up to 1 min tracks; longer shows clear warning)
+- **UI**: Presets + buttons always visible (custom settings collapsible via ExpansionTile)
+- **Audio**: Fade-in/out, volume controls, headphone recommendation
+- **No Web Workers** (removed due to Dart web interop limitations with binary data transfer)
 
-## Screenshots
-
-*(Add screenshots here — take them on your iPhone!)*
-
-## Platforms
-
-- iOS
-- Android
-- Web (PWA-ready)
-
-## How to Run
-
-```bash
-flutter run -d chrome   # Web
-flutter run             # Connected device (iOS/Android)
+## Installation & Run
+1. Clone the repo
+2. Install dependencies
+   ```bash
+   flutter pub get

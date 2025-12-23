@@ -1,41 +1,49 @@
 
-### Updated `llms.md`
+### Updated llms.md (for LLM prompting / project documentation)
 
 ```markdown
-# Audio Therapy App — LLM Session Starter
+# Audio Therapy App - LLM Prompting Guide
 
-Use this file to continue development with Grok, Gemini, Claude, or any LLM.
+Last updated: December 23, 2025
 
-## Project Summary
-
-Flutter app for generating personalized sound therapy tracks:
-- Binaural/isochronic/hybrid tones
+## Project Overview
+Cross-platform Flutter app for generating personalized sound therapy tracks:
+- Binaural beats / isochronic tones / hybrid
+- Brainwave frequencies (delta to gamma)
 - Solfeggio frequencies
-- Ambient backgrounds
-- 6 presets in responsive 3-column grid
-- Collapsible custom settings (starts closed)
-- Preview, generate, save to library
-- Cross-platform: web (download), iOS/Android (local storage + library)
+- Ambient sounds (pink, rain, ocean, forest)
+- Presets + custom settings
+- 15s preview + full save (1–12 min)
+- Library management
 
-Current state: Fully working, polished UI, no scrolling on small screens, memory-optimized for 12-minute tracks.
+## Current Implementation Details
+- Single-file `main.dart` (for simplicity during development)
+- Audio generation: Pure Dart synthesis (sin waves + amplitude modulation)
+- Mobile: `Isolate` for background generation (no UI freeze)
+- Web: Synchronous generation, max 1 minute (due to Dart web limitations)
+- UI: Dark theme, ExpansionTile for collapsible custom settings
+- Playback: `just_audio` + in-memory `StreamAudioSource`
+- Save: Documents directory (mobile), browser download (web)
 
-## Key Files
+## Key Technical Notes for LLMs
+- **No Web Workers** currently (Dart web interop + structured clone issues with ArrayBuffer transfer)
+- **Slider clamping** on web: max 1.0, divisions null, durationMin clamped to 1.0
+- **Presets** on web: durationMin forced to 1.0 when selected
+- **Ambient on web**: Simplified (pink noise approximation)
+- **Dependencies**: just_audio, path_provider, path
 
-- `lib/main.dart` — All logic, UI, audio generation
+## Prompting Tips for Future Improvements
+When asking LLMs for code changes:
+- Specify platform (web vs mobile) if relevant
+- Mention current single-file structure
+- Request modularization (src/services/audio_generator.dart, etc.)
+- Ask for background playback (`just_audio_background`)
+- Request fade-out on track end
+- Specify "no external audio generation libs" (keep pure Dart)
 
-## Prompt Template for Future Sessions
+## Known Limitations
+- Web: 1-minute max (browser single-thread performance)
+- No background playback yet (app must stay open)
+- Ambient sounds simplified on web
 
-> "You are continuing development of the Audio Therapy Flutter app. The code is in main.dart with 6 presets in a 3-column grid, collapsible custom settings, preview, generate/save, and library. Dark purple theme. Improve [feature] or add [new idea]. Keep responsive and clean."
-
-## Ideas for Next Features
-
-- Sleep timer with fade-out
-- Favorites in library
-- Export/share tracks
-- More presets (Lucid Dreaming, Energy Boost)
-- Background playback
-- Custom ambient mixer
-- PWA install prompt
-- Custom app icon and splash screen
-
-Keep building healing sounds. 🎧✨
+This document is for LLM context when continuing development.
