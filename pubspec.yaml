@@ -1,19 +1,18 @@
 name: audio_therapy_app
-description: Personalized sound therapy generator
+description: AURA – Audio-Visual Bio-Interface for Symbiotic Resonance
 
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.0.0
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   just_audio: ^0.9.46
-  path_provider: ^2.1.5
-  file_picker: ^8.3.7
-  path: ^1.9.0
+  shared_preferences: ^2.3.0
+  flutter_shaders: ^0.1.2
 
 dev_dependencies:
   flutter_test:
@@ -22,3 +21,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  shaders:
+    - lib/src/layers/neuro_optical/shaders/motion_aftereffect.frag
+
+  assets:
+    - assets/sounds/inner/ambient_default.mp3
+    - assets/sounds/inner/binaural_528.mp3
+    - assets/sounds/middle/cat_purr.mp3
+    - assets/sounds/outer/ultrasonic_18khz.mp3
