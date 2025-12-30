@@ -67,7 +67,9 @@ class VibrationalDriver {
         beatFreq: state.frequencyHz,
         carrierFreq: state.carrierFreq,
         toneType: state.toneType,
-        volume: 0.25 * state.intensity.clamp(0.0, 1.0), // Lowered tone weight to allow textures to breathe
+        volume: 0.25 * state.intensity.clamp(0.0, 1.0),
+        ultrasonicFreq: state.ultrasonicFreq,
+        noiseLevel: state.noiseLevel,
       );
 
       if (requestId != _activeRequestId) return;

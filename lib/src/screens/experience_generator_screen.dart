@@ -8,6 +8,7 @@ import '../domains/sphere_domain.dart';
 import '../domains/inner_sphere/inner_sphere.dart';
 import '../domains/middle_sphere/middle_sphere.dart';
 import '../domains/outer_sphere/outer_sphere.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 
 class ExperienceGeneratorScreen extends StatefulWidget {
   const ExperienceGeneratorScreen({super.key});
@@ -28,6 +29,9 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
   String _toneType = 'hybrid';
   double _carrierFreq = 528.0;        // Default solfeggio frequency
   String? _activePresetName;
+  int _presetMode = 1; // 1 or 2
+  double _ultrasonicFreq = 0.0;
+  double _noiseLevel = 0.0;
 
   final List<SphereDomain> _domains = [
     const InnerSphere(),
@@ -70,6 +74,8 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
       texture: _texture,
       toneType: _toneType,
       carrierFreq: _carrierFreq,
+      ultrasonicFreq: _ultrasonicFreq,
+      noiseLevel: _noiseLevel,
     );
 
     await _driver.playExperience(state, context);
@@ -178,12 +184,48 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
 
   Widget _buildQuickPresets() {
     final List<Map<String, dynamic>> quickPresets = [
-      {'name': 'Deep Sleep', 'sphere': 'inner', 'freq': 2.5, 'carrier': 174.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'icon': Icons.nightlight},
-      {'name': 'DNA Repair', 'sphere': 'inner', 'freq': 10.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'icon': Icons.auto_awesome},
-      {'name': 'Cat Zen', 'sphere': 'middle', 'freq': 7.83, 'carrier': 396.0, 'tone': 'isochronic', 'tex': 'cat_zen', 'icon': Icons.pets},
-      {'name': 'Dog Whistle', 'sphere': 'middle', 'freq': 12.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'dog_whistle', 'icon': Icons.hearing},
-      {'name': 'Sonic Shield', 'sphere': 'outer', 'freq': 15.0, 'carrier': 741.0, 'tone': 'isochronic', 'tex': 'sonic_shield', 'icon': Icons.shield},
-      {'name': 'Mosquito X', 'sphere': 'outer', 'freq': 18.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'mosquito_repellent', 'icon': Icons.bug_report},
+      {
+        'name': 'Deep Theta', 
+        'sphere': 'inner', 
+        'icon': Icons.nightlight,
+        'mode1': {'freq': 4.0, 'carrier': 528.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'noise': 0.7, 'ultra': 0.0},
+        'mode2': {'freq': 4.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'noise': 0.8, 'ultra': 0.0},
+      },
+      {
+        'name': 'Alpha Calm', 
+        'sphere': 'inner', 
+        'icon': Icons.spa,
+        'mode1': {'freq': 10.0, 'carrier': 417.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'noise': 0.2, 'ultra': 0.0},
+        'mode2': {'freq': 10.0, 'carrier': 417.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'noise': 0.4, 'ultra': 0.0},
+      },
+      {
+        'name': 'Cat Purr', 
+        'sphere': 'middle', 
+        'icon': Icons.pets,
+        'mode1': {'freq': 6.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'cat_zen', 'noise': 0.1, 'ultra': 0.0},
+        'mode2': {'freq': 6.0, 'carrier': 639.0, 'tone': 'hybrid', 'tex': 'bio_harmony', 'noise': 0.3, 'ultra': 0.0},
+      },
+      {
+        'name': 'Forest', 
+        'sphere': 'middle', 
+        'icon': Icons.forest,
+        'mode1': {'freq': 18.0, 'carrier': 741.0, 'tone': 'binaural', 'tex': 'cat_zen', 'noise': 0.4, 'ultra': 0.0},
+        'mode2': {'freq': 18.0, 'carrier': 741.0, 'tone': 'hybrid', 'tex': 'bio_harmony', 'noise': 0.6, 'ultra': 0.0},
+      },
+      {
+        'name': 'Mosquito X', 
+        'sphere': 'outer', 
+        'icon': Icons.bug_report,
+        'mode1': {'freq': 40.0, 'carrier': 852.0, 'tone': 'binaural', 'tex': 'mosquito_repellent', 'noise': 0.6, 'ultra': 15000.0},
+        'mode2': {'freq': 40.0, 'carrier': 852.0, 'tone': 'hybrid', 'tex': 'mosquito_repellent', 'noise': 0.9, 'ultra': 15000.0},
+      },
+      {
+        'name': 'Dog Whistle', 
+        'sphere': 'outer', 
+        'icon': Icons.hearing,
+        'mode1': {'freq': 30.0, 'carrier': 963.0, 'tone': 'binaural', 'tex': 'sonic_shield', 'noise': 0.5, 'ultra': 20000.0},
+        'mode2': {'freq': 30.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'sonic_shield', 'noise': 0.8, 'ultra': 20000.0},
+      },
     ];
 
     return Column(
@@ -207,13 +249,18 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
                   avatar: Icon(p['icon'] as IconData, size: 16, color: isSelected ? Colors.cyan : Colors.white38),
                   label: Text(p['name'] as String, style: TextStyle(color: isSelected ? Colors.white : Colors.white54, fontSize: 12)),
                   onPressed: () {
+                    HapticFeedback.mediumImpact();
                     setState(() {
                       _activePresetName = p['name'] as String;
+                      final m = _presetMode == 1 ? p['mode1'] : p['mode2'] as Map<String, dynamic>;
                       _sphereType = p['sphere'] as String;
-                      _frequencyHz = p['freq'] as double;
-                      _carrierFreq = p['carrier'] as double;
-                      _toneType = p['tone'] as String;
-                      _texture = p['tex'] as String;
+                      _frequencyHz = m['freq'] as double;
+                      _carrierFreq = m['carrier'] as double;
+                      _toneType = m['tone'] as String;
+                      _texture = m['tex'] as String;
+                      _noiseLevel = (_noiseLevel == 0.0) ? (m['noise'] as double) : _noiseLevel; // Stay with current if manual? No, load preset value
+                      _noiseLevel = m['noise'] as double;
+                      _ultrasonicFreq = m['ultra'] as double;
                       _currentStep = 3;
                     });
                     _pageController.animateToPage(3, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
@@ -224,10 +271,61 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
             }).toList(),
           ),
         ),
+        if (_activePresetName != null) _buildModeToggle(),
       ],
     );
   }
 
+  Widget _buildModeToggle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: Row(
+        children: [
+          const Text('PRESET MODE', style: TextStyle(fontSize: 9, color: Colors.white38, letterSpacing: 1)),
+          const SizedBox(width: 12),
+          SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 1, label: Text('MODE 1'), icon: Icon(Icons.looks_one, size: 12)),
+              ButtonSegment(value: 2, label: Text('MODE 2'), icon: Icon(Icons.looks_two, size: 12)),
+            ],
+            selected: {_presetMode},
+            onSelectionChanged: (s) {
+              HapticFeedback.selectionClick();
+              setState(() => _presetMode = s.first);
+              
+              // Define presets locally to re-fetch on mode change (simplified)
+              final presetsData = [
+                {'name': 'Deep Theta', 'mode1': {'freq': 4.0, 'carrier': 528.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'noise': 0.7, 'ultra': 0.0}, 'mode2': {'freq': 4.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'noise': 0.8, 'ultra': 0.0}},
+                {'name': 'Alpha Calm', 'mode1': {'freq': 10.0, 'carrier': 417.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'noise': 0.2, 'ultra': 0.0}, 'mode2': {'freq': 10.0, 'carrier': 417.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'noise': 0.4, 'ultra': 0.0}},
+                {'name': 'Cat Purr', 'mode1': {'freq': 6.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'cat_zen', 'noise': 0.1, 'ultra': 0.0}, 'mode2': {'freq': 6.0, 'carrier': 639.0, 'tone': 'hybrid', 'tex': 'bio_harmony', 'noise': 0.3, 'ultra': 0.0}},
+                {'name': 'Forest', 'mode1': {'freq': 18.0, 'carrier': 741.0, 'tone': 'binaural', 'tex': 'cat_zen', 'noise': 0.4, 'ultra': 0.0}, 'mode2': {'freq': 18.0, 'carrier': 741.0, 'tone': 'hybrid', 'tex': 'bio_harmony', 'noise': 0.6, 'ultra': 0.0}},
+                {'name': 'Mosquito X', 'mode1': {'freq': 40.0, 'carrier': 852.0, 'tone': 'binaural', 'tex': 'mosquito_repellent', 'noise': 0.6, 'ultra': 15000.0}, 'mode2': {'freq': 40.0, 'carrier': 852.0, 'tone': 'hybrid', 'tex': 'mosquito_repellent', 'noise': 0.9, 'ultra': 15000.0}},
+                {'name': 'Dog Whistle', 'mode1': {'freq': 30.0, 'carrier': 963.0, 'tone': 'binaural', 'tex': 'sonic_shield', 'noise': 0.5, 'ultra': 20000.0}, 'mode2': {'freq': 30.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'sonic_shield', 'noise': 0.8, 'ultra': 20000.0}},
+              ];
+              
+              final p = presetsData.firstWhere((item) => item['name'] == _activePresetName);
+              final m = _presetMode == 1 ? p['mode1'] : p['mode2'] as Map<String, dynamic>;
+              
+              setState(() {
+                _frequencyHz = m['freq'] as double;
+                _carrierFreq = m['carrier'] as double;
+                _toneType = m['tone'] as String;
+                _texture = m['tex'] as String;
+                _noiseLevel = m['noise'] as double;
+                _ultrasonicFreq = m['ultra'] as double;
+              });
+              if (_isPlaying) _startExperience(refresh: true);
+            },
+            style: SegmentedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              textStyle: const TextStyle(fontSize: 10),
+              selectedBackgroundColor: Colors.cyan.withOpacity(0.2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildProgressIndicator() {
     return Padding(
@@ -259,10 +357,13 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
         children: [
           if (_currentStep > 0)
             TextButton(
-              onPressed: () => _pageController.previousPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              ),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
               child: const Text('BACK', style: TextStyle(color: Colors.white70, letterSpacing: 1.2)),
             )
           else
@@ -270,10 +371,13 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
           
           if (_currentStep < 3)
             ElevatedButton(
-              onPressed: () => _pageController.nextPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              ),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.cyan.withOpacity(0.2),
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -421,6 +525,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
             value: _frequencyHz,
             activeColor: Colors.cyan,
             onChanged: (v) {
+              HapticFeedback.selectionClick();
               setState(() => _frequencyHz = v);
               if (_isPlaying) _startExperience(refresh: true);
             },
@@ -547,6 +652,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
           ResonanceIntensity(
             value: _intensity,
             onChanged: (v) {
+              HapticFeedback.selectionClick();
               setState(() => _intensity = v);
               if (_isPlaying) _startExperience(refresh: true);
             },

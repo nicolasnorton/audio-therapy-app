@@ -41,14 +41,17 @@ class AudioGenerator {
     required double beatFreq,
     required String toneType,
     required double toneVolume,
+    double ultrasonicFreq = 0.0,
+    double noiseLevel = 0.0,
   }) {
     final t = i / sampleRate;
 
-    final carrier = sin(pi2 * carrierFreq * t);
+    // Core Tones
     final left = sin(pi2 * carrierFreq * t);
     final right = sin(pi2 * (carrierFreq + beatFreq) * t);
+    final carrier = sin(pi2 * carrierFreq * t);
 
-    // Deeper modulation for clearer therapeutic effect
+    // Isochronic Modulation
     final isochronic = carrier * (1 + 0.7 * sin(pi2 * beatFreq * t));
 
     double mainL, mainR;
@@ -58,13 +61,21 @@ class AudioGenerator {
     } else if (toneType == 'isochronic') {
       mainL = mainR = isochronic;
     } else {
-      // Rebalanced hybrid mix for better audible layers
       mainL = 0.5 * carrier + 0.3 * left + 0.2 * isochronic;
       mainR = 0.5 * carrier + 0.3 * right + 0.2 * isochronic;
     }
 
-    buffer[i * 2] = mainL * toneVolume;
-    buffer[i * 2 + 1] = mainR * toneVolume;
+    // Ultrasonic Layer (e.g. 15kHz-20kHz)
+    double ultra = 0.0;
+    if (ultrasonicFreq > 0) {
+      ultra = sin(pi2 * ultrasonicFreq * t) * 0.5;
+    }
+
+    // Simple White Noise (can be filtered downstream if needed)
+    final noise = noiseLevel > 0 ? (Random(i).nextDouble() * 2 - 1) * noiseLevel : 0.0;
+
+    buffer[i * 2] = (mainL * toneVolume + ultra + noise);
+    buffer[i * 2 + 1] = (mainR * toneVolume + ultra + noise);
   }
 
   static Future<Uint8List> generateAsync({

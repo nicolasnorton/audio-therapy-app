@@ -6,6 +6,8 @@ class ResonanceState {
   final String texture;
   final String toneType;
   final double carrierFreq;
+  final double ultrasonicFreq;
+  final double noiseLevel;
 
   ResonanceState({
     this.name = 'Untitled',
@@ -15,6 +17,8 @@ class ResonanceState {
     this.texture = 'default',
     this.toneType = 'hybrid',
     this.carrierFreq = 528.0,
+    this.ultrasonicFreq = 0.0,
+    this.noiseLevel = 0.0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +29,8 @@ class ResonanceState {
         'texture': texture,
         'toneType': toneType,
         'carrierFreq': carrierFreq,
+        'ultrasonicFreq': ultrasonicFreq,
+        'noiseLevel': noiseLevel,
       };
 
   factory ResonanceState.fromJson(Map<String, dynamic> json) => ResonanceState(
@@ -35,5 +41,7 @@ class ResonanceState {
         texture: json['texture'],
         toneType: json['toneType'],
         carrierFreq: json['carrierFreq'],
+        ultrasonicFreq: (json['ultrasonicFreq'] ?? 0.0).toDouble(),
+        noiseLevel: (json['noiseLevel'] ?? 0.0).toDouble(),
       );
 }

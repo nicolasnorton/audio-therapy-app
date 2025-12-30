@@ -9,23 +9,28 @@ class ProgrammaticToneSource extends StreamAudioSource {
   final double carrierFreq;
   final String toneType;
   final double volume;
+  final double ultrasonicFreq;
+  final double noiseLevel;
 
   ProgrammaticToneSource({
     required this.beatFreq,
     required this.carrierFreq,
     required this.toneType,
     required this.volume,
+    this.ultrasonicFreq = 0.0,
+    this.noiseLevel = 0.0,
   });
 
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
-    // Smaller buffer for responsiveness, generated in an isolate to avoid UI hangs
     final data = await compute(_generateWavBufferIsolate, {
       'duration': 1.0,
       'carrier': carrierFreq,
       'beat': beatFreq,
       'type': toneType,
       'volume': volume,
+      'ultra': ultrasonicFreq,
+      'noise': noiseLevel,
     });
     
     start ??= 0;
@@ -46,6 +51,8 @@ class ProgrammaticToneSource extends StreamAudioSource {
     final double beatFreq = params['beat'];
     final String toneType = params['type'];
     final double volume = params['volume'];
+    final double ultra = params['ultra'];
+    final double noise = params['noise'];
 
     const int sampleRate = 44100;
     final int samples = (durationSec * sampleRate).floor();
@@ -60,6 +67,8 @@ class ProgrammaticToneSource extends StreamAudioSource {
         beatFreq: beatFreq,
         toneType: toneType,
         toneVolume: volume,
+        ultrasonicFreq: ultra,
+        noiseLevel: noise,
       );
     }
 

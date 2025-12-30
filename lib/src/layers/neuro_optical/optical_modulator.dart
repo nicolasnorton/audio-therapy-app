@@ -41,13 +41,10 @@ class _OpticalModulatorState extends State<OpticalModulator> with SingleTickerPr
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            // Uniforms:
-            // 0: time (cumulative)
-            // 1: resolution.x
-            // 2: resolution.y
-            // 3: intensity
-            // 4: frequency
-            shader.setFloat(0, _controller.value * 20.0 * 3.14159); // Cyclic time or just flow
+            // High frequency (e.g. 40Hz) -> faster movement
+            // Low frequency (e.g. 2Hz) -> slower movement
+            final speedMult = (widget.frequencyHz / 10.0).clamp(0.2, 5.0);
+            shader.setFloat(0, _controller.value * 20.0 * 3.14159 * speedMult); 
             shader.setFloat(1, MediaQuery.of(context).size.width);
             shader.setFloat(2, MediaQuery.of(context).size.height);
             shader.setFloat(3, widget.intensity);
