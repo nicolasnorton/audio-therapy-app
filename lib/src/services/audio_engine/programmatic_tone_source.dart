@@ -24,7 +24,7 @@ class ProgrammaticToneSource extends StreamAudioSource {
   @override
   Future<StreamAudioResponse> request([int? start, int? end]) async {
     final data = await compute(_generateWavBufferIsolate, {
-      'duration': 1.0,
+      'duration': 10.0,
       'carrier': carrierFreq,
       'beat': beatFreq,
       'type': toneType,

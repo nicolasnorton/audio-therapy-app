@@ -74,8 +74,19 @@ class AudioGenerator {
     // Simple White Noise (can be filtered downstream if needed)
     final noise = noiseLevel > 0 ? (Random(i).nextDouble() * 2 - 1) * noiseLevel : 0.0;
 
-    buffer[i * 2] = (mainL * toneVolume + ultra + noise);
-    buffer[i * 2 + 1] = (mainR * toneVolume + ultra + noise);
+    // Micro-fade envelope to smooth loop points (20ms fade)
+    const double fadeSamples = 44100 * 0.02; 
+    final double fade;
+    if (i < fadeSamples) {
+      fade = i / fadeSamples;
+    } else if (i > (buffer.length / 2) - fadeSamples) {
+      fade = ((buffer.length / 2) - i) / fadeSamples;
+    } else {
+      fade = 1.0;
+    }
+
+    buffer[i * 2] = (mainL * toneVolume + ultra + noise) * fade;
+    buffer[i * 2 + 1] = (mainR * toneVolume + ultra + noise) * fade;
   }
 
   static Future<Uint8List> generateAsync({
