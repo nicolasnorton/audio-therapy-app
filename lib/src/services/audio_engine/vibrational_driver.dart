@@ -54,13 +54,19 @@ class VibrationalDriver {
       // Check if another request has superseded this one
       if (requestId != _activeRequestId) return;
 
-      // Explicitly stop/reset for a clean swap
-      await _ambientPlayer.stop();
-      await _tonePlayer.stop();
-
-      await _ambientPlayer.setAsset(assetPath);
-      await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.85); // Boosted ambient
-      await _ambientPlayer.setLoopMode(LoopMode.all);
+      // 1b. Load assets with interruption handling
+      try {
+        await _ambientPlayer.setAsset(assetPath);
+        if (requestId != _activeRequestId) return;
+        
+        await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.85);
+        await _ambientPlayer.setLoopMode(LoopMode.all);
+      } catch (e) {
+        if (!e.toString().contains('interrupted') && !e.toString().contains('abort')) {
+          rethrow;
+        }
+        return; // Superseded
+      }
 
       // 2. Setup Programmatic Tone Layer
       final toneSource = ProgrammaticToneSource(
@@ -74,8 +80,17 @@ class VibrationalDriver {
 
       if (requestId != _activeRequestId) return;
 
-      await _tonePlayer.setAudioSource(toneSource);
-      await _tonePlayer.setLoopMode(LoopMode.all);
+      try {
+        await _tonePlayer.setAudioSource(toneSource);
+        if (requestId != _activeRequestId) return;
+        
+        await _tonePlayer.setLoopMode(LoopMode.all);
+      } catch (e) {
+        if (!e.toString().contains('interrupted') && !e.toString().contains('abort')) {
+          rethrow;
+        }
+        return; // Superseded
+      }
 
       if (requestId != _activeRequestId) return;
 
@@ -87,11 +102,14 @@ class VibrationalDriver {
 
       print('Experience active: ${state.texture} @ ${state.carrierFreq}Hz');
     } catch (e) {
-      print('Audio error: $e');
-      if (context.mounted && requestId == _activeRequestId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Audio Error: $e'), backgroundColor: Colors.red),
-        );
+      // Only show error if this is still the active request
+      if (requestId == _activeRequestId) {
+        print('Audio error: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Audio Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     } finally {
       if (requestId == _activeRequestId) _isProcessing = false;
