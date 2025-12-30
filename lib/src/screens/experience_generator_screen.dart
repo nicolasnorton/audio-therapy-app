@@ -45,6 +45,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
       );
 
   bool _isPlaying = false;
+  bool _isFullscreen = false;
   List<ResonanceState> _savedPresets = [];
 
   @override
@@ -145,7 +146,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
       children: [
         Scaffold(
           backgroundColor: Colors.black, // Dark, focused background
-          appBar: AppBar(
+          appBar: _isFullscreen ? null : AppBar(
             title: const Text('AURA Weaver'),
             elevation: 0,
             backgroundColor: Colors.transparent,
@@ -157,7 +158,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
               ),
             ],
           ),
-          body: Column(
+          body: _isFullscreen ? const SizedBox.shrink() : Column(
             children: [
               _buildProgressIndicator(),
               _buildQuickPresets(),
@@ -178,6 +179,28 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
             ],
           ),
         ),
+        if (_isFullscreen)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black,
+              child: Stack(
+                children: [
+                  OpticalModulator(
+                    frequencyHz: _frequencyHz,
+                    intensity: _intensity,
+                  ),
+                  Positioned(
+                    top: 40,
+                    right: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.fullscreen_exit, color: Colors.white54, size: 32),
+                      onPressed: () => setState(() => _isFullscreen = false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -623,21 +646,35 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
               boxShadow: _isPlaying ? [BoxShadow(color: Colors.cyan.withOpacity(0.2), blurRadius: 20)] : [],
             ),
             clipBehavior: Clip.antiAlias,
-            child: _isPlaying 
-              ? OpticalModulator(
-                  frequencyHz: _frequencyHz,
-                  intensity: _intensity,
-                )
-              : Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.offline_bolt_outlined, size: 48, color: Colors.white10),
-                      const SizedBox(height: 8),
-                      const Text('Ready to Deploy', style: TextStyle(color: Colors.white10)),
-                    ],
+            child: Stack(
+              children: [
+                if (_isPlaying)
+                  OpticalModulator(
+                    frequencyHz: _frequencyHz,
+                    intensity: _intensity,
+                  )
+                else
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.offline_bolt_outlined, size: 48, color: Colors.white10),
+                        const SizedBox(height: 8),
+                        const Text('Ready to Deploy', style: TextStyle(color: Colors.white10)),
+                      ],
+                    ),
                   ),
-                ),
+                if (_isPlaying)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(Icons.fullscreen, color: Colors.white38),
+                      onPressed: () => setState(() => _isFullscreen = true),
+                    ),
+                  ),
+              ],
+            ),
           ),
           
           const SizedBox(height: 32),
