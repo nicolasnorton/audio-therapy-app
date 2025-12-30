@@ -33,6 +33,40 @@ class AudioGenerator {
   static const int sampleRate = 44100;
   static const double pi2 = 2 * pi;
 
+  static void synthesizeSampleToBuffer({
+    required int i,
+    required Float32List buffer,
+    required double sampleRate,
+    required double carrierFreq,
+    required double beatFreq,
+    required String toneType,
+    required double toneVolume,
+  }) {
+    final t = i / sampleRate;
+
+    final carrier = sin(pi2 * carrierFreq * t);
+    final left = sin(pi2 * carrierFreq * t);
+    final right = sin(pi2 * (carrierFreq + beatFreq) * t);
+
+    // Deeper modulation for clearer therapeutic effect
+    final isochronic = carrier * (1 + 0.7 * sin(pi2 * beatFreq * t));
+
+    double mainL, mainR;
+    if (toneType == 'binaural') {
+      mainL = left;
+      mainR = right;
+    } else if (toneType == 'isochronic') {
+      mainL = mainR = isochronic;
+    } else {
+      // Rebalanced hybrid mix for better audible layers
+      mainL = 0.5 * carrier + 0.3 * left + 0.2 * isochronic;
+      mainR = 0.5 * carrier + 0.3 * right + 0.2 * isochronic;
+    }
+
+    buffer[i * 2] = mainL * toneVolume;
+    buffer[i * 2 + 1] = mainR * toneVolume;
+  }
+
   static Future<Uint8List> generateAsync({
     required double durationSec,
     required double beatFreq,
@@ -51,41 +85,27 @@ class AudioGenerator {
     final baseCarrier = carrierFreq > 0 ? carrierFreq : 240.0;
     final ambient = ambientType != 'none' ? _generateAmbient(samples, ambientType) : Float32List(samples);
 
-    final progressStep = (samples / 100).ceil();
-
     for (int i = 0; i < samples; i++) {
-      onProgress(i / samples.toDouble());
+      if (i % 10000 == 0) onProgress(i / samples.toDouble());
 
-      final t = i / sampleRate;
-
-      final carrier = sin(pi2 * baseCarrier * t);
-      final left = sin(pi2 * baseCarrier * t);
-      final right = sin(pi2 * (baseCarrier + beatFreq) * t);
-
-      final isochronic = carrier * (1 + 0.14 * sin(pi2 * beatFreq * t));
-
-      double mainL, mainR;
-      if (toneType == 'binaural') {
-        mainL = left;
-        mainR = right;
-      } else if (toneType == 'isochronic') {
-        mainL = mainR = isochronic;
-      } else {
-        mainL = 0.85 * carrier + 0.12 * left + 0.03 * isochronic;
-        mainR = 0.85 * carrier + 0.12 * right + 0.03 * isochronic;
-      }
-
-      mainL *= toneVolume;
-      mainR *= toneVolume;
+      synthesizeSampleToBuffer(
+        i: i,
+        buffer: buffer,
+        sampleRate: sampleRate.toDouble(),
+        carrierFreq: baseCarrier,
+        beatFreq: beatFreq,
+        toneType: toneType,
+        toneVolume: toneVolume,
+      );
 
       final fade = i < 22050 ? i / 22050.0 : i > samples - 22050 ? (samples - i) / 22050.0 : 1.0;
 
-      buffer[i * 2] = (mainL + ambient[i] * ambientVolume) * fade;
-      buffer[i * 2 + 1] = (mainR + ambient[i] * ambientVolume) * fade;
+      buffer[i * 2] = (buffer[i * 2] + ambient[i] * ambientVolume) * fade;
+      buffer[i * 2 + 1] = (buffer[i * 2 + 1] + ambient[i] * ambientVolume) * fade;
     }
 
     onProgress(1.0);
-    return _encodeWav(buffer);
+    return encodeWav(buffer);
   }
 
   static Float32List _generateAmbient(int samples, String type) {
@@ -127,31 +147,31 @@ class AudioGenerator {
     return noise;
   }
 
-  static Uint8List _encodeWav(Float32List samples) {
+  static Uint8List encodeWav(Float32List samples) {
     final bytes = BytesBuilder();
     final dataSize = samples.length * 4;
     final fileSize = 36 + dataSize;
 
     bytes.add('RIFF'.codeUnits);
-    bytes.add(_int32(fileSize));
+    bytes.add(int32(fileSize));
     bytes.add('WAVE'.codeUnits);
     bytes.add('fmt '.codeUnits);
-    bytes.add(_int32(16));
-    bytes.add(_int16(3));
-    bytes.add(_int16(2));
-    bytes.add(_int32(sampleRate));
-    bytes.add(_int32(sampleRate * 8));
-    bytes.add(_int16(8));
-    bytes.add(_int16(32));
+    bytes.add(int32(16));
+    bytes.add(int16(3));
+    bytes.add(int16(2));
+    bytes.add(int32(sampleRate));
+    bytes.add(int32(sampleRate * 8));
+    bytes.add(int16(8));
+    bytes.add(int16(32));
     bytes.add('data'.codeUnits);
-    bytes.add(_int32(dataSize));
+    bytes.add(int32(dataSize));
     bytes.add(samples.buffer.asUint8List());
 
     return bytes.toBytes();
   }
 
-  static List<int> _int32(int v) => [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
-  static List<int> _int16(int v) => [v & 0xFF, (v >> 8) & 0xFF];
+  static List<int> int32(int v) => [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+  static List<int> int16(int v) => [v & 0xFF, (v >> 8) & 0xFF];
 }
 
 class InMemoryAudioSource extends StreamAudioSource {

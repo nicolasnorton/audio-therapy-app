@@ -1,11 +1,23 @@
+import 'package:flutter/cupertino.dart' show Text;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart' show BuildContext, ScaffoldMessenger, SnackBar, Colors;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:just_audio/just_audio.dart';
+import 'dart:io' show Platform; // ← Fixes Platform.isIOS
 import 'dart:math' as math;
 
 import '../../models/resonance_state.dart';
+import '../../domains/sphere_domain.dart';
+import '../../domains/inner_sphere/inner_sphere.dart';
+import '../../domains/middle_sphere/middle_sphere.dart';
+import '../../domains/outer_sphere/outer_sphere.dart';
+import 'programmatic_tone_source.dart';
 
 class VibrationalDriver {
-  final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer _ambientPlayer = AudioPlayer();
+  final AudioPlayer _tonePlayer = AudioPlayer();
+  bool _isProcessing = false;
+  int _activeRequestId = 0;
 
   Future<bool> _assetExists(String path) async {
     try {
@@ -16,51 +28,100 @@ class VibrationalDriver {
     }
   }
 
-  Future<void> playExperience(ResonanceState state) async {
+  Future<void> playExperience(ResonanceState state, BuildContext context) async {
+    final requestId = ++_activeRequestId;
+    _isProcessing = true;
+
     try {
-      // Map texture to your actual file names
-      String assetPath;
-      switch (state.texture) {
-        case 'default':
-          assetPath = 'assets/sounds/inner/ambient_default.mp3';
-          break;
-        case 'binaural_528':
-          assetPath = 'assets/sounds/inner/binaural_528.mp3';
-          break;
-        case 'purr':
-          assetPath = 'assets/sounds/middle/cat_purr.mp3';
-          break;
-        case 'ultrasonic':
-          assetPath = 'assets/sounds/outer/ultrasonic_18khz.mp3';
-          break;
-        default:
-          assetPath = 'assets/sounds/inner/ambient_default.mp3';
-      }
+      // 1. Setup Ambient / Texture Layer
+      final List<SphereDomain> domains = [
+        const InnerSphere(),
+        const MiddleSphere(),
+        const OuterSphere(),
+      ];
+
+      final domain = domains.firstWhere(
+        (d) => d.id == state.sphereType,
+        orElse: () => const InnerSphere(),
+      );
+
+      final assetPath = domain.mapTextureToAsset(state.texture);
 
       if (!await _assetExists(assetPath)) {
-        throw Exception('Audio file not found: $assetPath');
+        throw Exception('Audio file missing: $assetPath');
       }
 
-      await _player.setAsset(assetPath);
-      _player.setVolume(state.intensity);
+      // Check if another request has superseded this one
+      if (requestId != _activeRequestId) return;
 
-      // Biomimetic pitch shift
-      final easedPitch = 1.0 + math.sin(state.frequencyHz / 1000) * 0.2;
-      _player.setPitch(easedPitch);
+      // Explicitly stop/reset for a clean swap
+      await _ambientPlayer.stop();
+      await _tonePlayer.stop();
 
-      await _player.setLoopMode(LoopMode.all);
-      await _player.play();
+      await _ambientPlayer.setAsset(assetPath);
+      await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.7);
+      await _ambientPlayer.setLoopMode(LoopMode.all);
+
+      // 2. Setup Programmatic Tone Layer
+      final toneSource = ProgrammaticToneSource(
+        beatFreq: state.frequencyHz,
+        carrierFreq: state.carrierFreq,
+        toneType: state.toneType,
+        volume: 0.6 * state.intensity.clamp(0.0, 1.0),
+      );
+
+      if (requestId != _activeRequestId) return;
+
+      await _tonePlayer.setAudioSource(toneSource);
+      await _tonePlayer.setLoopMode(LoopMode.all);
+
+      if (requestId != _activeRequestId) return;
+
+      // 3. Sync and Start
+      await Future.wait([
+        _ambientPlayer.play(),
+        _tonePlayer.play(),
+      ]);
+
+      print('Experience active: ${state.texture} @ ${state.carrierFreq}Hz');
     } catch (e) {
       print('Audio error: $e');
-      // You can show SnackBar here if you pass context
+      if (context.mounted && requestId == _activeRequestId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Audio Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (requestId == _activeRequestId) _isProcessing = false;
     }
   }
 
   Future<void> stop() async {
-    await _player.stop();
+    // Invalidate any ongoing play requests
+    _activeRequestId++;
+    
+    try {
+      // Immediate volume drop to zero before the async stop() call
+      // This solves the "doesn't stop" perception issue
+      await Future.wait([
+        _ambientPlayer.setVolume(0.0),
+        _tonePlayer.setVolume(0.0),
+      ]);
+
+      await Future.wait([
+        _ambientPlayer.stop(),
+        _tonePlayer.stop(),
+      ]);
+      
+      _isProcessing = false;
+    } catch (e) {
+      print('Stop error: $e');
+    }
   }
 
   void dispose() {
-    _player.dispose();
+    _activeRequestId = -1; // Invalidate all
+    _ambientPlayer.dispose();
+    _tonePlayer.dispose();
   }
 }

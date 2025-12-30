@@ -37,22 +37,29 @@ class _OpticalModulatorState extends State<OpticalModulator> with SingleTickerPr
   Widget build(BuildContext context) {
     return ShaderBuilder(
       assetKey: 'lib/src/layers/neuro_optical/shaders/motion_aftereffect.frag',
-      (context, shader, _) {
+      (context, shader, child) {
         return AnimatedBuilder(
           animation: _controller,
-          builder: (context, child) {
-            shader.setFloat(0, _controller.value * widget.frequencyHz / 100);
+          builder: (context, _) {
+            // Uniforms:
+            // 0: time (cumulative)
+            // 1: resolution.x
+            // 2: resolution.y
+            // 3: intensity
+            // 4: frequency
+            shader.setFloat(0, _controller.value * 20.0 * 3.14159); // Cyclic time or just flow
             shader.setFloat(1, MediaQuery.of(context).size.width);
             shader.setFloat(2, MediaQuery.of(context).size.height);
             shader.setFloat(3, widget.intensity);
+            shader.setFloat(4, widget.frequencyHz);
+            
             return CustomPaint(
               painter: _ShaderPainter(shader),
-              child: const SizedBox.expand(),
+              size: MediaQuery.of(context).size,
             );
           },
         );
       },
-      child: const SizedBox(),
     );
   }
 }
