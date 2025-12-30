@@ -153,6 +153,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
           body: Column(
             children: [
               _buildProgressIndicator(),
+              _buildQuickPresets(),
               Expanded(
                 child: PageView(
                   controller: _pageController,
@@ -171,6 +172,48 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuickPresets() {
+    final List<Map<String, dynamic>> quickPresets = [
+      {'name': 'Deep Sleep', 'sphere': 'inner', 'freq': 2.5, 'carrier': 174.0, 'tone': 'binaural', 'tex': 'default', 'icon': Icons.nightlight},
+      {'name': 'DNA Repair', 'sphere': 'inner', 'freq': 10.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'binaural_528', 'icon': Icons.auto_awesome},
+      {'name': 'Cat Zen', 'sphere': 'middle', 'freq': 7.83, 'carrier': 396.0, 'tone': 'isochronic', 'tex': 'purr', 'icon': Icons.pets},
+      {'name': 'Bio Harmony', 'sphere': 'middle', 'freq': 4.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'purr', 'icon': Icons.spa},
+      {'name': 'Sonic Shield', 'sphere': 'outer', 'freq': 15.0, 'carrier': 741.0, 'tone': 'isochronic', 'tex': 'ultrasonic', 'icon': Icons.shield},
+      {'name': 'Z-Wave Focus', 'sphere': 'outer', 'freq': 12.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'ultrasonic', 'icon': Icons.psychology},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: quickPresets.map((p) {
+          final isCurrSphere = _sphereType == p['sphere'];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ActionChip(
+              backgroundColor: isCurrSphere ? Colors.cyan.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+              side: BorderSide(color: isCurrSphere ? Colors.cyan.withOpacity(0.5) : Colors.white10),
+              avatar: Icon(p['icon'] as IconData, size: 16, color: isCurrSphere ? Colors.cyan : Colors.white38),
+              label: Text(p['name'] as String, style: TextStyle(color: isCurrSphere ? Colors.white : Colors.white54, fontSize: 12)),
+              onPressed: () {
+                setState(() {
+                  _sphereType = p['sphere'] as String;
+                  _frequencyHz = p['freq'] as double;
+                  _carrierFreq = p['carrier'] as double;
+                  _toneType = p['tone'] as String;
+                  _texture = p['tex'] as String;
+                  _currentStep = 3;
+                });
+                _pageController.animateToPage(3, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+                if (_isPlaying) _startExperience(refresh: true);
+              },
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
