@@ -27,6 +27,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
   String _texture = 'default';
   String _toneType = 'hybrid';
   double _carrierFreq = 528.0;        // Default solfeggio frequency
+  String? _activePresetName;
 
   final List<SphereDomain> _domains = [
     const InnerSphere(),
@@ -197,16 +198,17 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Row(
             children: quickPresets.map((p) {
-              final isCurrSphere = _sphereType == p['sphere'];
+              final isSelected = _activePresetName == p['name'];
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: ActionChip(
-                  backgroundColor: isCurrSphere ? Colors.cyan.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-                  side: BorderSide(color: isCurrSphere ? Colors.cyan.withOpacity(0.5) : Colors.white10),
-                  avatar: Icon(p['icon'] as IconData, size: 16, color: isCurrSphere ? Colors.cyan : Colors.white38),
-                  label: Text(p['name'] as String, style: TextStyle(color: isCurrSphere ? Colors.white : Colors.white54, fontSize: 12)),
+                  backgroundColor: isSelected ? Colors.cyan.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                  side: BorderSide(color: isSelected ? Colors.cyan : Colors.white10),
+                  avatar: Icon(p['icon'] as IconData, size: 16, color: isSelected ? Colors.cyan : Colors.white38),
+                  label: Text(p['name'] as String, style: TextStyle(color: isSelected ? Colors.white : Colors.white54, fontSize: 12)),
                   onPressed: () {
                     setState(() {
+                      _activePresetName = p['name'] as String;
                       _sphereType = p['sphere'] as String;
                       _frequencyHz = p['freq'] as double;
                       _carrierFreq = p['carrier'] as double;
@@ -238,6 +240,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
         ],
         selected: {_sphereType},
         onSelectionChanged: (s) => setState(() {
+          _activePresetName = null; // Clear preset focus when manually changing sphere
           _sphereType = s.first;
           _texture = _currentDomain.availableTextures.first;
           if (_isPlaying) _startExperience(refresh: true);
@@ -311,73 +314,57 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
   }
 
   // --- Step 1: Domain Selection ---
-  Widget _buildDomainStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Select Sphere Domain', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300)),
-          const SizedBox(height: 8),
-          const Text('Choose the environmental focus of this resonance.', style: TextStyle(color: Colors.white70)),
+          const Text('AURA Synthesis Overview', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300)),
+          const SizedBox(height: 16),
+          const Text(
+            'The Weaver allows you to bridge the cognitive and physical domains through resonance.', 
+            style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)
+          ),
           const SizedBox(height: 32),
-          ..._domains.map((d) => _buildDomainCard(d)).toList(),
+          _buildInfoCard(
+            title: 'Spheres',
+            desc: 'Inner (Healing), Middle (Environment), Outer (Protection).',
+            icon: Icons.public,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoCard(
+            title: 'Frequencies',
+            desc: 'Solfeggio carriers and rhythmic brainwave entrainment.',
+            icon: Icons.graphic_eq,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDomainCard(SphereDomain domain) {
-    final isSelected = _sphereType == domain.id;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _sphereType = domain.id;
-        _texture = domain.availableTextures.first;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.cyan.withOpacity(0.15) : Colors.black.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.cyan : Colors.white10,
-            width: isSelected ? 2 : 1,
+  Widget _buildInfoCard({required String title, required String desc, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.cyan, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                const SizedBox(height: 4),
+                Text(desc, style: const TextStyle(fontSize: 12, color: Colors.white38)),
+              ],
+            ),
           ),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.cyan.withOpacity(0.2), blurRadius: 10)] : [],
-        ),
-        child: Row(
-          children: [
-            Icon(
-              domain.id == 'inner' ? Icons.self_improvement : domain.id == 'middle' ? Icons.pets : Icons.shield_outlined,
-              size: 32,
-              color: isSelected ? Colors.cyan : Colors.white38,
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    domain.id.toUpperCase(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                      color: isSelected ? Colors.cyan : Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    domain.id == 'inner' ? 'Healing, ASMR, Binaural' : domain.id == 'middle' ? 'Animal Calls, Bio-Textures' : 'Masking, Deterrents, Focus',
-                    style: const TextStyle(fontSize: 12, color: Colors.white38),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected) const Icon(Icons.check_circle, color: Colors.cyan),
-          ],
-        ),
+        ],
       ),
     );
   }
