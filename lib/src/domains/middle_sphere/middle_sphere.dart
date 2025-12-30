@@ -11,13 +11,17 @@ class MiddleSphere extends SphereDomain {
   @override
   String mapTextureToAsset(String texture) {
     switch (texture) {
-      case 'purr':
+      case 'cat_zen':
+        return 'assets/sounds/middle/cat_purr.mp3';
+      case 'dog_whistle':
+        return 'assets/sounds/middle/cat_purr.mp3'; // Placeholder
+      case 'bio_harmony':
         return 'assets/sounds/middle/cat_purr.mp3';
       default:
-        return 'assets/sounds/middle/cat_purr.mp3'; // Fallback to purr for now
+        return 'assets/sounds/middle/cat_purr.mp3';
     }
   }
 
   @override
-  List<String> get availableTextures => ['purr'];
+  List<String> get availableTextures => ['cat_zen', 'dog_whistle', 'bio_harmony'];
 }

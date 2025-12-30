@@ -178,12 +178,12 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
 
   Widget _buildQuickPresets() {
     final List<Map<String, dynamic>> quickPresets = [
-      {'name': 'Deep Sleep', 'sphere': 'inner', 'freq': 2.5, 'carrier': 174.0, 'tone': 'binaural', 'tex': 'default', 'icon': Icons.nightlight},
-      {'name': 'DNA Repair', 'sphere': 'inner', 'freq': 10.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'binaural_528', 'icon': Icons.auto_awesome},
-      {'name': 'Cat Zen', 'sphere': 'middle', 'freq': 7.83, 'carrier': 396.0, 'tone': 'isochronic', 'tex': 'purr', 'icon': Icons.pets},
-      {'name': 'Bio Harmony', 'sphere': 'middle', 'freq': 4.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'purr', 'icon': Icons.spa},
-      {'name': 'Sonic Shield', 'sphere': 'outer', 'freq': 15.0, 'carrier': 741.0, 'tone': 'isochronic', 'tex': 'ultrasonic', 'icon': Icons.shield},
-      {'name': 'Z-Wave Focus', 'sphere': 'outer', 'freq': 12.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'ultrasonic', 'icon': Icons.psychology},
+      {'name': 'Deep Sleep', 'sphere': 'inner', 'freq': 2.5, 'carrier': 174.0, 'tone': 'binaural', 'tex': 'deep_sleep', 'icon': Icons.nightlight},
+      {'name': 'DNA Repair', 'sphere': 'inner', 'freq': 10.0, 'carrier': 528.0, 'tone': 'hybrid', 'tex': 'dna_repair', 'icon': Icons.auto_awesome},
+      {'name': 'Cat Zen', 'sphere': 'middle', 'freq': 7.83, 'carrier': 396.0, 'tone': 'isochronic', 'tex': 'cat_zen', 'icon': Icons.pets},
+      {'name': 'Dog Whistle', 'sphere': 'middle', 'freq': 12.0, 'carrier': 639.0, 'tone': 'binaural', 'tex': 'dog_whistle', 'icon': Icons.hearing},
+      {'name': 'Sonic Shield', 'sphere': 'outer', 'freq': 15.0, 'carrier': 741.0, 'tone': 'isochronic', 'tex': 'sonic_shield', 'icon': Icons.shield},
+      {'name': 'Mosquito X', 'sphere': 'outer', 'freq': 18.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'mosquito_repellent', 'icon': Icons.bug_report},
     ];
 
     return Column(
@@ -224,37 +224,10 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
             }).toList(),
           ),
         ),
-        _buildSphereSelector(),
       ],
     );
   }
 
-  Widget _buildSphereSelector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      child: SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(value: 'inner', label: Text('INNER'), icon: Icon(Icons.self_improvement, size: 14)),
-          ButtonSegment(value: 'middle', label: Text('MIDDLE'), icon: Icon(Icons.pets, size: 14)),
-          ButtonSegment(value: 'outer', label: Text('OUTER'), icon: Icon(Icons.shield_outlined, size: 14)),
-        ],
-        selected: {_sphereType},
-        onSelectionChanged: (s) => setState(() {
-          _activePresetName = null; // Clear preset focus when manually changing sphere
-          _sphereType = s.first;
-          _texture = _currentDomain.availableTextures.first;
-          if (_isPlaying) _startExperience(refresh: true);
-        }),
-        style: SegmentedButton.styleFrom(
-          visualDensity: VisualDensity.compact,
-          backgroundColor: Colors.white.withOpacity(0.05),
-          selectedBackgroundColor: Colors.cyan.withOpacity(0.2),
-          side: BorderSide(color: Colors.white10),
-          textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-        ),
-      ),
-    );
-  }
 
   Widget _buildProgressIndicator() {
     return Padding(
@@ -313,31 +286,74 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
     );
   }
 
-  // --- Step 1: Domain Selection ---
+  Widget _buildDomainStep() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('AURA Synthesis Overview', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300)),
-          const SizedBox(height: 16),
-          const Text(
-            'The Weaver allows you to bridge the cognitive and physical domains through resonance.', 
-            style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic)
-          ),
+          const Text('Select Sphere Domain', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300)),
+          const SizedBox(height: 8),
+          const Text('Choose the environmental focus of this resonance.', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 32),
-          _buildInfoCard(
-            title: 'Spheres',
-            desc: 'Inner (Healing), Middle (Environment), Outer (Protection).',
-            icon: Icons.public,
-          ),
-          const SizedBox(height: 16),
-          _buildInfoCard(
-            title: 'Frequencies',
-            desc: 'Solfeggio carriers and rhythmic brainwave entrainment.',
-            icon: Icons.graphic_eq,
-          ),
+          ..._domains.map((d) => _buildDomainCard(d)).toList(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDomainCard(SphereDomain domain) {
+    final isSelected = _sphereType == domain.id;
+    return GestureDetector(
+      onTap: () => setState(() {
+        _activePresetName = null;
+        _sphereType = domain.id;
+        _texture = domain.availableTextures.first;
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.cyan.withOpacity(0.15) : Colors.black.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.cyan : Colors.white10,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected ? [BoxShadow(color: Colors.cyan.withOpacity(0.2), blurRadius: 10)] : [],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              domain.id == 'inner' ? Icons.self_improvement : domain.id == 'middle' ? Icons.pets : Icons.shield_outlined,
+              size: 32,
+              color: isSelected ? Colors.cyan : Colors.white38,
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    domain.id.toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                      color: isSelected ? Colors.cyan : Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    domain.id == 'inner' ? 'Healing, DNA Repair, Neural Mist' : domain.id == 'middle' ? 'Animal Zen, Dog Whistle, Bio-Textures' : 'Masking, Mosquito Repellent, Shields',
+                    style: const TextStyle(fontSize: 12, color: Colors.white38),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected) const Icon(Icons.check_circle, color: Colors.cyan),
+          ],
+        ),
       ),
     );
   }
@@ -484,8 +500,8 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
 
   // --- Step 4: Launch Pad ---
   Widget _buildLaunchStep() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

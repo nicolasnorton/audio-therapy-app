@@ -11,7 +11,11 @@ class OuterSphere extends SphereDomain {
   @override
   String mapTextureToAsset(String texture) {
     switch (texture) {
-      case 'ultrasonic':
+      case 'mosquito_repellent':
+        return 'assets/sounds/outer/ultrasonic_18khz.mp3';
+      case 'sonic_shield':
+        return 'assets/sounds/outer/ultrasonic_18khz.mp3';
+      case 'z_wave_focus':
         return 'assets/sounds/outer/ultrasonic_18khz.mp3';
       default:
         return 'assets/sounds/outer/ultrasonic_18khz.mp3';
@@ -19,5 +23,5 @@ class OuterSphere extends SphereDomain {
   }
 
   @override
-  List<String> get availableTextures => ['ultrasonic'];
+  List<String> get availableTextures => ['mosquito_repellent', 'sonic_shield', 'z_wave_focus'];
 }
