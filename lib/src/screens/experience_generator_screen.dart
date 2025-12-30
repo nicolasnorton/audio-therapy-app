@@ -185,34 +185,70 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
       {'name': 'Z-Wave Focus', 'sphere': 'outer', 'freq': 12.0, 'carrier': 963.0, 'tone': 'hybrid', 'tex': 'ultrasonic', 'icon': Icons.psychology},
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        children: quickPresets.map((p) {
-          final isCurrSphere = _sphereType == p['sphere'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ActionChip(
-              backgroundColor: isCurrSphere ? Colors.cyan.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-              side: BorderSide(color: isCurrSphere ? Colors.cyan.withOpacity(0.5) : Colors.white10),
-              avatar: Icon(p['icon'] as IconData, size: 16, color: isCurrSphere ? Colors.cyan : Colors.white38),
-              label: Text(p['name'] as String, style: TextStyle(color: isCurrSphere ? Colors.white : Colors.white54, fontSize: 12)),
-              onPressed: () {
-                setState(() {
-                  _sphereType = p['sphere'] as String;
-                  _frequencyHz = p['freq'] as double;
-                  _carrierFreq = p['carrier'] as double;
-                  _toneType = p['tone'] as String;
-                  _texture = p['tex'] as String;
-                  _currentStep = 3;
-                });
-                _pageController.animateToPage(3, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
-                if (_isPlaying) _startExperience(refresh: true);
-              },
-            ),
-          );
-        }).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 24, top: 4),
+          child: Text('QUICK RESONANCE', style: TextStyle(fontSize: 10, color: Colors.cyan, letterSpacing: 2)),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            children: quickPresets.map((p) {
+              final isCurrSphere = _sphereType == p['sphere'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: ActionChip(
+                  backgroundColor: isCurrSphere ? Colors.cyan.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+                  side: BorderSide(color: isCurrSphere ? Colors.cyan.withOpacity(0.5) : Colors.white10),
+                  avatar: Icon(p['icon'] as IconData, size: 16, color: isCurrSphere ? Colors.cyan : Colors.white38),
+                  label: Text(p['name'] as String, style: TextStyle(color: isCurrSphere ? Colors.white : Colors.white54, fontSize: 12)),
+                  onPressed: () {
+                    setState(() {
+                      _sphereType = p['sphere'] as String;
+                      _frequencyHz = p['freq'] as double;
+                      _carrierFreq = p['carrier'] as double;
+                      _toneType = p['tone'] as String;
+                      _texture = p['tex'] as String;
+                      _currentStep = 3;
+                    });
+                    _pageController.animateToPage(3, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+                    if (_isPlaying) _startExperience(refresh: true);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        _buildSphereSelector(),
+      ],
+    );
+  }
+
+  Widget _buildSphereSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(value: 'inner', label: Text('INNER'), icon: Icon(Icons.self_improvement, size: 14)),
+          ButtonSegment(value: 'middle', label: Text('MIDDLE'), icon: Icon(Icons.pets, size: 14)),
+          ButtonSegment(value: 'outer', label: Text('OUTER'), icon: Icon(Icons.shield_outlined, size: 14)),
+        ],
+        selected: {_sphereType},
+        onSelectionChanged: (s) => setState(() {
+          _sphereType = s.first;
+          _texture = _currentDomain.availableTextures.first;
+          if (_isPlaying) _startExperience(refresh: true);
+        }),
+        style: SegmentedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          backgroundColor: Colors.white.withOpacity(0.05),
+          selectedBackgroundColor: Colors.cyan.withOpacity(0.2),
+          side: BorderSide(color: Colors.white10),
+          textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+        ),
       ),
     );
   }

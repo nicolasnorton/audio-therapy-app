@@ -59,7 +59,7 @@ class VibrationalDriver {
       await _tonePlayer.stop();
 
       await _ambientPlayer.setAsset(assetPath);
-      await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.7);
+      await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.85); // Boosted ambient
       await _ambientPlayer.setLoopMode(LoopMode.all);
 
       // 2. Setup Programmatic Tone Layer
@@ -67,7 +67,7 @@ class VibrationalDriver {
         beatFreq: state.frequencyHz,
         carrierFreq: state.carrierFreq,
         toneType: state.toneType,
-        volume: 0.6 * state.intensity.clamp(0.0, 1.0),
+        volume: 0.25 * state.intensity.clamp(0.0, 1.0), // Lowered tone weight to allow textures to breathe
       );
 
       if (requestId != _activeRequestId) return;
