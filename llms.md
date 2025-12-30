@@ -1,49 +1,44 @@
+# Audio Therapy App - LLM Context & Architecture
 
-### Updated llms.md (for LLM prompting / project documentation)
+Last updated: December 30, 2025
 
-```markdown
-# Audio Therapy App - LLM Prompting Guide
+## Project Objective
+The **AURA (Acoustic-Ultraviolet-Resonance-Atmosphere)** Bio-Interface is a modular sound therapy engine designed to bridge cognitive states and physical environments through resonance.
 
-Last updated: December 23, 2025
+## Core Architecture (The Weaver)
+The app has transitioned from a single-file prototype to a modular **multi-domain architecture**:
+- **Sphere Domains**: 3-tiered environmental focus:
+    - `InnerSphere`: Healing, DNA Repair (528Hz), ASMR.
+    - `MiddleSphere`: Bio-textures (Cat Zen/Purr), Dog Whistles.
+    - `OuterSphere`: Shields, Deterrents (Mosquito Repellent/18kHz).
+- **VibrationalDriver**: A robust audio engine managing two synchronous layers:
+    - **Ambient Layer**: High-quality .mp3 textures (weighted at 85% volume).
+    - **Tone Layer**: Programmatic synthesis (weighted at 25% volume) using `ProgrammaticToneSource`.
+- **AURA Weaver UI**: A multi-step wizard (`ExperienceGeneratorScreen`) with:
+    - **6 Quick Presets**: Global hot-swaps for common resonance states.
+    - **Step-by-Step Flow**: Domain Selection → Tone Synthesis → Texture Selection → Launch Pad.
 
-## Project Overview
-Cross-platform Flutter app for generating personalized sound therapy tracks:
-- Binaural beats / isochronic tones / hybrid
-- Brainwave frequencies (delta to gamma)
-- Solfeggio frequencies
-- Ambient sounds (pink, rain, ocean, forest)
-- Presets + custom settings
-- 15s preview + full save (1–12 min)
-- Library management
+## Key Implementation Details
+- **Audio Engine**: Uses `just_audio` with a custom `VibrationalDriver` that implements "Request ID" tracking to prevent sound overlapping during rapid transitions.
+- **Tone Synthesis**: Pure Dart generation of Binaural, Isochronic, and Hybrid (Binaural + Isochronic) tones via `ProgrammaticToneSource`.
+- **Visuals**: `OpticalModulator` provides frequency-locked visual entrainment during active resonance.
+- **State Management**: Uses `ResonanceState` model to encapsulate frequency, intensity, sphere type, and texture.
 
-## Current Implementation Details
-- Single-file `main.dart` (for simplicity during development)
-- Audio generation: Pure Dart synthesis (sin waves + amplitude modulation)
-- Mobile: `Isolate` for background generation (no UI freeze)
-- Web: Synchronous generation, max 1 minute (due to Dart web limitations)
-- UI: Dark theme, ExpansionTile for collapsible custom settings
-- Playback: `just_audio` + in-memory `StreamAudioSource`
-- Save: Documents directory (mobile), browser download (web)
+## Technical Notes for LLMs
+- **Modular Domains**: Domain-specific logic (asset mapping, texture lists) lives in `lib/src/domains/`.
+- **Mixing Philosophy**: The balance is shifted towards "Atmospheric Textures." Tones should be subtle hums, not dominant sirens.
+- **Stability**: Rapidly clicking presets is handled by invalidating old `requestId`s in the `VibrationalDriver`.
+- **Assets**: Sounds are organized in `assets/sounds/[inner|middle|outer]/`.
 
-## Key Technical Notes for LLMs
-- **No Web Workers** currently (Dart web interop + structured clone issues with ArrayBuffer transfer)
-- **Slider clamping** on web: max 1.0, divisions null, durationMin clamped to 1.0
-- **Presets** on web: durationMin forced to 1.0 when selected
-- **Ambient on web**: Simplified (pink noise approximation)
-- **Dependencies**: just_audio, path_provider, path
+## Development Principles
+- **Aesthetic Excellence**: UI must feel "premium," utilizing cyan/dark palettes, glassmorphism, and smooth transitions.
+- **Scientific Foundation**: Use Solfeggio frequencies and brainwave ranges (Delta 0.5-4Hz, Theta 4-8Hz, Alpha 8-12Hz, Beta 12-30Hz, Gamma 30-40Hz).
+- **Pure Dart**: Logic should remain in Dart/Flutter; minimize platform-specific native plugins unless strictly necessary (like `just_audio`).
 
-## Prompting Tips for Future Improvements
-When asking LLMs for code changes:
-- Specify platform (web vs mobile) if relevant
-- Mention current single-file structure
-- Request modularization (src/services/audio_generator.dart, etc.)
-- Ask for background playback (`just_audio_background`)
-- Request fade-out on track end
-- Specify "no external audio generation libs" (keep pure Dart)
+## Current Path Mapping
+- `lib/src/screens/`: UI layers and Wizards.
+- `lib/src/services/audio_engine/`: The core drivers and tone generators.
+- `lib/src/domains/`: Definitions for Sphere interaction logic.
+- `lib/src/models/`: Shared state objects.
 
-## Known Limitations
-- Web: 1-minute max (browser single-thread performance)
-- No background playback yet (app must stay open)
-- Ambient sounds simplified on web
-
-This document is for LLM context when continuing development.
+This document serves as the ground truth for LLMs continuing the "AURA Vision" branch development.
