@@ -252,13 +252,12 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
                     HapticFeedback.mediumImpact();
                     setState(() {
                       _activePresetName = p['name'] as String;
-                      final m = _presetMode == 1 ? p['mode1'] : p['mode2'] as Map<String, dynamic>;
+                      final m = (_presetMode == 1 ? p['mode1'] : p['mode2']) as Map<String, dynamic>;
                       _sphereType = p['sphere'] as String;
                       _frequencyHz = m['freq'] as double;
                       _carrierFreq = m['carrier'] as double;
                       _toneType = m['tone'] as String;
                       _texture = m['tex'] as String;
-                      _noiseLevel = (_noiseLevel == 0.0) ? (m['noise'] as double) : _noiseLevel; // Stay with current if manual? No, load preset value
                       _noiseLevel = m['noise'] as double;
                       _ultrasonicFreq = m['ultra'] as double;
                       _currentStep = 3;
@@ -304,7 +303,7 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
               ];
               
               final p = presetsData.firstWhere((item) => item['name'] == _activePresetName);
-              final m = _presetMode == 1 ? p['mode1'] : p['mode2'] as Map<String, dynamic>;
+              final m = (_presetMode == 1 ? p['mode1'] : p['mode2']) as Map<String, dynamic>;
               
               setState(() {
                 _frequencyHz = m['freq'] as double;
