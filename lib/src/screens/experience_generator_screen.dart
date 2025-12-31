@@ -209,7 +209,9 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
                             setState(() {
                               _isPlaying = false;
                               _isFullscreen = false;
+                              _currentStep = 0;
                             });
+                            _pageController.jumpToPage(0);
                           }
                         },
                         icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),

@@ -59,7 +59,7 @@ class VibrationalDriver {
         await _ambientPlayer.setAsset(assetPath);
         if (requestId != _activeRequestId) return;
         
-        await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.85);
+        await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.95);
         await _ambientPlayer.setLoopMode(LoopMode.all);
       } catch (e) {
         if (!e.toString().contains('interrupted') && !e.toString().contains('abort')) {
@@ -73,7 +73,7 @@ class VibrationalDriver {
         beatFreq: state.frequencyHz,
         carrierFreq: state.carrierFreq,
         toneType: state.toneType,
-        volume: 0.25 * state.intensity.clamp(0.0, 1.0),
+        volume: 0.12 * state.intensity.clamp(0.0, 1.0),
         ultrasonicFreq: state.ultrasonicFreq,
         noiseLevel: state.noiseLevel,
       );
