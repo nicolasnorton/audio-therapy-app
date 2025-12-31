@@ -94,13 +94,14 @@ class VibrationalDriver {
 
       if (requestId != _activeRequestId) return;
 
-      // 3. Sync and Start
-      await Future.wait([
-        _ambientPlayer.play(),
-        _tonePlayer.play(),
-      ]);
-
-      print('Experience active: ${state.texture} @ ${state.carrierFreq}Hz');
+      // 3. Sync and Start - FINAL SAFETY CHECK
+      if (requestId == _activeRequestId) {
+        await Future.wait([
+          _ambientPlayer.play(),
+          _tonePlayer.play(),
+        ]);
+        print('Experience active: ${state.texture} @ ${state.carrierFreq}Hz');
+      }
     } catch (e) {
       // Only show error if this is still the active request
       if (requestId == _activeRequestId) {
@@ -117,12 +118,12 @@ class VibrationalDriver {
   }
 
   Future<void> stop() async {
-    // Invalidate any ongoing play requests
+    // Invalidate any ongoing play requests IMMEDIATELY
     _activeRequestId++;
+    _isProcessing = false;
     
     try {
       // Immediate volume drop to zero before the async stop() call
-      // This solves the "doesn't stop" perception issue
       await Future.wait([
         _ambientPlayer.setVolume(0.0),
         _tonePlayer.setVolume(0.0),
@@ -132,8 +133,6 @@ class VibrationalDriver {
         _ambientPlayer.stop(),
         _tonePlayer.stop(),
       ]);
-      
-      _isProcessing = false;
     } catch (e) {
       print('Stop error: $e');
     }

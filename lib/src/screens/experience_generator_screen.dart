@@ -158,24 +158,31 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
               ),
             ],
           ),
-          body: _isFullscreen ? const SizedBox.shrink() : Column(
+          body: Stack(
             children: [
-              _buildProgressIndicator(),
-              _buildQuickPresets(),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  onPageChanged: (idx) => setState(() => _currentStep = idx),
+              Offstage(
+                offstage: _isFullscreen,
+                child: Column(
                   children: [
-                    _buildDomainStep(),
-                    _buildToneStep(),
-                    _buildTextureStep(),
-                    _buildLaunchStep(),
+                    _buildProgressIndicator(),
+                    _buildQuickPresets(),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: (idx) => setState(() => _currentStep = idx),
+                        children: [
+                          _buildDomainStep(),
+                          _buildToneStep(),
+                          _buildTextureStep(),
+                          _buildLaunchStep(),
+                        ],
+                      ),
+                    ),
+                    _buildNavigationControls(),
                   ],
                 ),
               ),
-              _buildNavigationControls(),
             ],
           ),
         ),

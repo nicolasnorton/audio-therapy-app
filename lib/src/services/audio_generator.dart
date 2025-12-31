@@ -37,22 +37,21 @@ class AudioGenerator {
     required int i,
     required Float32List buffer,
     required double sampleRate,
-    required double carrierFreq,
-    required double beatFreq,
+    double carrierPhase = 0.0,
+    double beatPhase = 0.0,
     required String toneType,
     required double toneVolume,
     double ultrasonicFreq = 0.0,
     double noiseLevel = 0.0,
+    Random? rnd,
   }) {
-    final t = i / sampleRate;
-
-    // Core Tones
-    final left = sin(pi2 * carrierFreq * t);
-    final right = sin(pi2 * (carrierFreq + beatFreq) * t);
-    final carrier = sin(pi2 * carrierFreq * t);
+    // Core Tones using phases directly to avoid expensive Math.sin(t) calculations
+    final left = sin(carrierPhase);
+    final right = sin(carrierPhase + beatPhase); // Approximate binaural phase shift
+    final carrier = sin(carrierPhase);
 
     // Isochronic Modulation
-    final isochronic = carrier * (1 + 0.7 * sin(pi2 * beatFreq * t));
+    final isochronic = carrier * (1 + 0.7 * sin(beatPhase));
 
     double mainL, mainR;
     if (toneType == 'binaural') {
@@ -65,24 +64,24 @@ class AudioGenerator {
       mainR = 0.5 * carrier + 0.3 * right + 0.2 * isochronic;
     }
 
-    // Ultrasonic Layer (e.g. 15kHz-20kHz)
+    // Ultrasonic Layer
     double ultra = 0.0;
     if (ultrasonicFreq > 0) {
+      // For ultra, we still calculate based on t as it's less frequent or we could add another phase
+      final t = i / sampleRate;
       ultra = sin(pi2 * ultrasonicFreq * t) * 0.5;
     }
 
-    // Simple White Noise (can be filtered downstream if needed)
-    final noise = noiseLevel > 0 ? (Random(i).nextDouble() * 2 - 1) * noiseLevel : 0.0;
+    // Efficient Noise Generation
+    final noise = (noiseLevel > 0 && rnd != null) ? (rnd.nextDouble() * 2 - 1) * noiseLevel : 0.0;
 
-    // Micro-fade envelope to smooth loop points (20ms fade)
-    const double fadeSamples = 44100 * 0.02; 
-    final double fade;
+    // Micro-fade envelope (20ms)
+    final double fadeSamples = sampleRate * 0.02; 
+    double fade = 1.0;
     if (i < fadeSamples) {
       fade = i / fadeSamples;
     } else if (i > (buffer.length / 2) - fadeSamples) {
       fade = ((buffer.length / 2) - i) / fadeSamples;
-    } else {
-      fade = 1.0;
     }
 
     buffer[i * 2] = (mainL * toneVolume + ultra + noise) * fade;
@@ -106,19 +105,33 @@ class AudioGenerator {
 
     final baseCarrier = carrierFreq > 0 ? carrierFreq : 240.0;
     final ambient = ambientType != 'none' ? _generateAmbient(samples, ambientType) : Float32List(samples);
+    
+    final rnd = Random();
+    double carrierPhase = 0.0;
+    double beatPhase = 0.0;
+    final carrierIncr = (pi2 * baseCarrier) / sampleRate;
+    final beatIncr = (pi2 * beatFreq) / sampleRate;
 
     for (int i = 0; i < samples; i++) {
-      if (i % 10000 == 0) onProgress(i / samples.toDouble());
+      if (i % 20000 == 0) onProgress(i / samples.toDouble());
 
       synthesizeSampleToBuffer(
         i: i,
         buffer: buffer,
         sampleRate: sampleRate.toDouble(),
-        carrierFreq: baseCarrier,
-        beatFreq: beatFreq,
+        carrierPhase: carrierPhase,
+        beatPhase: beatPhase,
         toneType: toneType,
         toneVolume: toneVolume,
+        rnd: rnd,
       );
+
+      carrierPhase += carrierIncr;
+      beatPhase += beatIncr;
+
+      // Wrap phases to prevent precision loss over long durations (though 4s is fine)
+      if (carrierPhase > pi2) carrierPhase -= pi2;
+      if (beatPhase > pi2) beatPhase -= pi2;
 
       final fade = i < 22050 ? i / 22050.0 : i > samples - 22050 ? (samples - i) / 22050.0 : 1.0;
 
@@ -161,9 +174,14 @@ class AudioGenerator {
       }
     }
 
-    double maxAmp = noise.fold(0.0, (max, v) => v.abs() > max ? v.abs() : max);
-    if (maxAmp > 0) {
-      for (int i = 0; i < samples; i++) noise[i] /= maxAmp;
+    // Normalization without fold() for performance
+    double maxVal = 0.0001; 
+    for (int i = 0; i < samples; i++) {
+      if (noise[i].abs() > maxVal) maxVal = noise[i].abs();
+    }
+    
+    for (int i = 0; i < samples; i++) {
+      noise[i] /= maxVal;
     }
 
     return noise;
