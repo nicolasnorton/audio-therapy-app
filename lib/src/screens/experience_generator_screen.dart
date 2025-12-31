@@ -197,6 +197,32 @@ class _ExperienceGeneratorScreenState extends State<ExperienceGeneratorScreen> {
                       onPressed: () => setState(() => _isFullscreen = false),
                     ),
                   ),
+                  Positioned(
+                    bottom: 60,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await _driver.stop();
+                          if (mounted) {
+                            setState(() {
+                              _isPlaying = false;
+                              _isFullscreen = false;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),
+                        label: const Text('STOP RESONANCE', style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.bold, color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.3),
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
