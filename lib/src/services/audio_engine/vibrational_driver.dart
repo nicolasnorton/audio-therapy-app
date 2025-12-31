@@ -14,8 +14,24 @@ import '../../domains/outer_sphere/outer_sphere.dart';
 import 'programmatic_tone_source.dart';
 
 class VibrationalDriver {
+  static final VibrationalDriver _instance = VibrationalDriver._internal();
+  factory VibrationalDriver() => _instance;
+  VibrationalDriver._internal();
+
   final AudioPlayer _ambientPlayer = AudioPlayer();
   final AudioPlayer _tonePlayer = AudioPlayer();
+  
+  final _logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 0,
+      errorMethodCount: 5,
+      lineLength: 80,
+      colors: true,
+      printEmojis: true,
+      dateTimeFormat: DateTimeFormat.dateAndTime,
+    ),
+  );
+
   bool _isProcessing = false;
   int _activeRequestId = 0;
 
@@ -31,6 +47,13 @@ class VibrationalDriver {
   Future<void> playExperience(ResonanceState state, BuildContext context) async {
     final requestId = ++_activeRequestId;
     _isProcessing = true;
+    
+    _logger.i('🎵 Starting Experience: ${state.name} [ID:$requestId]\n'
+              '   • Carrier: ${state.carrierFreq}Hz\n'
+              '   • Beat: ${state.frequencyHz}Hz\n'
+              '   • Tone: ${state.toneType}\n'
+              '   • Texture: ${state.texture}\n'
+              '   • Ultrasonic: ${state.ultrasonicFreq}Hz');
 
     try {
       // 1. Setup Ambient / Texture Layer
@@ -46,29 +69,40 @@ class VibrationalDriver {
       );
 
       final assetPath = domain.mapTextureToAsset(state.texture);
+      _logger.d('   👉 Loading Ambient Asset: $assetPath');
+      final loadStart = DateTime.now();
 
       if (!await _assetExists(assetPath)) {
         throw Exception('Audio file missing: $assetPath');
       }
 
-      // Check if another request has superseded this one
-      if (requestId != _activeRequestId) return;
+      if (requestId != _activeRequestId) {
+          _logger.w('   ⚠️ Aborting: Request ID mismatch before asset load.');
+          return;
+      }
 
-      // 1b. Load assets with interruption handling
       try {
         await _ambientPlayer.setAsset(assetPath);
-        if (requestId != _activeRequestId) return;
+        if (requestId != _activeRequestId) {
+             _logger.w('   ⚠️ Aborting: Request ID mismatch after asset load.');
+             return;
+        }
         
         await _ambientPlayer.setVolume(state.intensity.clamp(0.0, 1.0) * 0.95);
         await _ambientPlayer.setLoopMode(LoopMode.all);
+        _logger.d('   ✅ Ambient Loaded in ${DateTime.now().difference(loadStart).inMilliseconds}ms');
       } catch (e) {
         if (!e.toString().contains('interrupted') && !e.toString().contains('abort')) {
+          _logger.e('   ❌ Ambient Load Error', error: e);
           rethrow;
         }
         return; // Superseded
       }
 
       // 2. Setup Programmatic Tone Layer
+      _logger.d('   👉 Generating Tone Buffer...');
+      final genStart = DateTime.now();
+      
       final toneSource = ProgrammaticToneSource(
         beatFreq: state.frequencyHz,
         carrierFreq: state.carrierFreq,
@@ -82,12 +116,17 @@ class VibrationalDriver {
 
       try {
         await _tonePlayer.setAudioSource(toneSource);
-        if (requestId != _activeRequestId) return;
+        if (requestId != _activeRequestId) {
+             _logger.w('   ⚠️ Aborting: Request ID mismatch after tone gen.');
+             return;
+        }
         
         await _tonePlayer.setLoopMode(LoopMode.all);
+        _logger.d('   ✅ Tone Generated in ${DateTime.now().difference(genStart).inMilliseconds}ms');
       } catch (e) {
         if (!e.toString().contains('interrupted') && !e.toString().contains('abort')) {
-          rethrow;
+           _logger.e('   ❌ Tone Gen Error', error: e);
+           rethrow;
         }
         return; // Superseded
       }
@@ -100,12 +139,11 @@ class VibrationalDriver {
           _ambientPlayer.play(),
           _tonePlayer.play(),
         ]);
-        print('Experience active: ${state.texture} @ ${state.carrierFreq}Hz');
+        _logger.i('   🚀 Experience Active & Playing [ID:$requestId]');
       }
     } catch (e) {
-      // Only show error if this is still the active request
       if (requestId == _activeRequestId) {
-        print('Audio error: $e');
+        _logger.e('   ❌ Audio Engine Error', error: e);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Audio Error: $e'), backgroundColor: Colors.red),
@@ -118,12 +156,12 @@ class VibrationalDriver {
   }
 
   Future<void> stop() async {
+    _logger.i('🛑 Stopping Resonance');
     // Invalidate any ongoing play requests IMMEDIATELY
     _activeRequestId++;
     _isProcessing = false;
     
     try {
-      // Immediate volume drop to zero before the async stop() call
       await Future.wait([
         _ambientPlayer.setVolume(0.0),
         _tonePlayer.setVolume(0.0),
@@ -133,8 +171,9 @@ class VibrationalDriver {
         _ambientPlayer.stop(),
         _tonePlayer.stop(),
       ]);
+      _logger.d('   ✅ Players Stopped');
     } catch (e) {
-      print('Stop error: $e');
+      _logger.e('   ❌ Stop Error', error: e);
     }
   }
 
